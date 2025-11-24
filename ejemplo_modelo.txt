@@ -1,0 +1,7 @@
+FUNCION: x * y + np.sin(z) * w
+VARIABLES:
+x: normal(media=10, desviacion=2)
+y: uniform(min=5, max=15)
+z: uniform(min=0, max=6.28)
+w: exponential(lambda=0.5)
+
