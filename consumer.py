@@ -134,6 +134,9 @@ class ConsumidorEscenarios:
             properties: Propiedades del mensaje
             body: Cuerpo del mensaje
         """
+        """
+        Callback robusto que reconecta si el publicador se desconectó.
+        """
         try:
             # Parsear el escenario
             escenario_data = json.loads(body)
@@ -141,8 +144,17 @@ class ConsumidorEscenarios:
             # Procesar el escenario
             resultado = self.procesar_escenario(escenario_data)
             
-            # Publicar el resultado
-            self.publicador.publicar_resultado(resultado)
+            # --- BLOQUE DE RECONEXIÓN ---
+            try:
+                # Intentar publicar
+                self.publicador.publicar_resultado(resultado)
+            except (pika.exceptions.AMQPConnectionError, pika.exceptions.StreamLostError, OSError):
+                print(f"[{self.consumer_id}] Conexión de publicación perdida. Reconectando...")
+                # Reiniciar el publicador
+                self.publicador = Publicador()
+                # Reintentar publicar
+                self.publicador.publicar_resultado(resultado)
+            # ----------------------------
             
             self.escenarios_procesados += 1
             self.resultados_publicados += 1
@@ -151,13 +163,13 @@ class ConsumidorEscenarios:
             if self.escenarios_procesados % 10 == 0:
                 print(f"[{self.consumer_id}] Escenarios procesados: {self.escenarios_procesados}")
             
-            # Confirmar que se proceso el mensaje
+            # Confirmar mensaje
             ch.basic_ack(delivery_tag=method.delivery_tag)
             
         except Exception as e:
-            print(f"[{self.consumer_id}] Error al procesar escenario: {e}")
-            # Rechazar el mensaje y no volver a encolarlo
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            print(f"[{self.consumer_id}] Error crítico procesando escenario: {e}")
+            # IMPORTANTE: No confirmar (ack) si falló, para que otro worker lo tome
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
     
     def iniciar_consumo(self):
         """
