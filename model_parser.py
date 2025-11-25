@@ -52,7 +52,7 @@ class Variable:
                 self.parametros.get('min', 0),
                 self.parametros.get('max', 1)
             )
-        elif self.distribucion == 'exponencial':
+        elif self.distribucion == 'exponential':# cambio de exponencial a exponential
             return np.random.exponential(
                 self.parametros.get('lambda', 1)
             )

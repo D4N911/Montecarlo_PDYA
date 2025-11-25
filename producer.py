@@ -67,6 +67,9 @@ class Productor:
         if not self.modelo:
             raise ValueError("El modelo no ha sido cargado")
         
+        # Limpiar la cola de modelo antes de publicar el nuevo modelo
+        self.publicador.purgar_cola_modelo()
+        
         modelo_serializado = self.modelo.serializar()
         self.publicador.publicar_modelo(modelo_serializado)
         print("Modelo publicado en la cola de modelo")

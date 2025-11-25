@@ -150,6 +150,13 @@ class Publicador(ManejadorMensajes):
                 delivery_mode=2,  # Hacer el mensaje persistente
             )
         )
+    def purgar_cola_modelo(self):
+        """Limpia la cola de modelos para asegurar que solo exista el nuevo."""
+        try:
+            self.channel.queue_purge(queue=config.COLA_MODELO)
+            print(f"Cola {config.COLA_MODELO} purgada.")
+        except Exception as e:
+            print(f"Advertencia al purgar cola: {e}")
 
 
 class Consumidor(ManejadorMensajes):
@@ -163,13 +170,22 @@ class Consumidor(ManejadorMensajes):
     def __init__(self, nombre_cola: str):
         """
         Inicializa el consumidor para una cola especifica.
-        
-        Args:
-            nombre_cola: Nombre de la cola de la que se consumiran mensajes
         """
         super().__init__()
         self.nombre_cola = nombre_cola
-        self.channel.queue_declare(queue=nombre_cola, durable=True)
+
+        # Definir argumentos si es la cola de modelo (para coincidir con el Productor)
+        args = None
+        if nombre_cola == config.COLA_MODELO:
+            args = {
+                'x-message-ttl': config.MODEL_TIMEOUT * 1000
+            }
+            
+        self.channel.queue_declare(
+            queue=nombre_cola, 
+            durable=True,
+            arguments=args  # faltaba este argumento
+        )
     
     def consumir(self, callback: Callable, auto_ack: bool = False):
         """
